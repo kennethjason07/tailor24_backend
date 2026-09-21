@@ -1,0 +1,40 @@
+# TAILOR24 Backend Requirements
+# Python 3.14 compatible
+
+# Web framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+python-multipart==0.0.12
+
+# MongoDB
+pymongo==4.10.1
+motor==3.6.0
+
+# Data validation
+pydantic>=2.10.0
+pydantic-settings>=2.6.0
+email-validator==2.2.0
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# Utilities
+python-dotenv==1.0.1
+httpx==0.28.1
+orjson==3.10.12
+pytz==2024.2
+Pillow==11.0.0
+qrcode==8.0
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-mock==3.14.0
+httpx==0.28.1
+anyio==4.7.0
+mongomock==4.1.2
+
+# Development
+ruff==0.8.4
