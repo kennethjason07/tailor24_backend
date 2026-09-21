@@ -45,7 +45,7 @@ app = FastAPI(
 # ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -113,6 +113,7 @@ from app.modules.deliveries.router import router as deliveries_router
 from app.modules.payouts.router import router as payouts_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.dashboard.router import router as dashboard_router
+from app.modules.measurements.router import router as measurements_router
 
 PREFIX = "/api/v1"
 
@@ -131,3 +132,4 @@ app.include_router(deliveries_router, prefix=f"{PREFIX}/deliveries", tags=["Deli
 app.include_router(payouts_router, prefix=f"{PREFIX}/payouts", tags=["Payouts"])
 app.include_router(notifications_router, prefix=f"{PREFIX}/notifications", tags=["Notifications"])
 app.include_router(dashboard_router, prefix=f"{PREFIX}/dashboard", tags=["Dashboard"])
+app.include_router(measurements_router, prefix=f"{PREFIX}", tags=["Measurements"])

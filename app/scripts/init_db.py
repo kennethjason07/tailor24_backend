@@ -75,7 +75,7 @@ def init_collections(db) -> None:
                 "phone": {"bsonType": "string"},
                 "email": {"bsonType": ["string", "null"]},
                 "role": {"bsonType": "string", "enum": [
-                    "CUSTOMER", "TAILOR", "HUB_STAFF", "HUB_MANAGER", "RIDER", "ADMIN_FINANCE"
+                    "CUSTOMER", "TAILOR", "HUB_STAFF", "HUB_MANAGER", "RIDER", "ADMIN_FINANCE", "SUPER_ADMIN"
                 ]},
                 "isActive": {"bsonType": "bool"},
                 "passwordHash": {"bsonType": "string"},
@@ -181,6 +181,11 @@ def init_collections(db) -> None:
     # ── auth_otps ─────────────────────────────────────────────────────────────
     _ensure_collection(db, "auth_otps")
 
+    # ── measurement_profiles ──────────────────────────────────────────────────
+    _ensure_collection(db, "measurement_profiles")
+
+    # ── measurement_events ────────────────────────────────────────────────────
+    _ensure_collection(db, "measurement_events")
 
 def init_indexes(db) -> None:
     logger.info("Creating indexes …")
@@ -258,6 +263,14 @@ def init_indexes(db) -> None:
     # auth_otps
     _idx(db, "auth_otps", [("createdAt", ASCENDING)], expireAfterSeconds=300, name="auth_otps_ttl")
     _idx(db, "auth_otps", [("email", ASCENDING)], name="auth_otps_email")
+
+    # measurement_profiles
+    _idx(db, "measurement_profiles", [("customerId", ASCENDING), ("profileName", ASCENDING)], unique=True, name="measurement_profiles_cust_name_unique")
+    _idx(db, "measurement_profiles", [("customerId", ASCENDING), ("isDefault", ASCENDING)], name="measurement_profiles_cust_default")
+
+    # measurement_events
+    _idx(db, "measurement_events", [("garmentId", ASCENDING), ("occurredAt", DESCENDING)], name="measurement_events_garment_date")
+    _idx(db, "measurement_events", [("orderId", ASCENDING)], name="measurement_events_order")
 
     logger.info("All indexes created.")
 

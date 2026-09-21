@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.common.enums import GarmentType, GenderCategory, PaymentMethod
+from app.common.enums import GarmentType, GenderCategory, PaymentMethod, MeasurementSource
 
 
 # ── Measurements ─────────────────────────────────────────────────────────────
@@ -21,8 +21,8 @@ class Measurements(BaseModel):
     """
 
     unit: str = Field(default="cm", pattern=r"^(cm|inch)$")
-    standard: Optional[str] = None  # S / M / L / 36 / 38 …
-    custom: Optional[Dict[str, Any]] = None  # {"chest": 40, "waist": 34, …}
+    values: Optional[Dict[str, float]] = Field(default_factory=dict)
+    custom: Optional[Dict[str, float]] = Field(default_factory=dict)
 
 
 # ── Garment line item inside an order request ─────────────────────────────────
@@ -32,7 +32,9 @@ class GarmentItem(BaseModel):
     type: GarmentType
     gender: GenderCategory
     serviceCharge: Decimal = Field(..., gt=0, decimal_places=2)
-    measurements: Measurements
+    measurementSource: Optional[MeasurementSource] = None
+    measurementProfileId: Optional[str] = None
+    measurements: Optional[Measurements] = None
     notes: Optional[str] = None
 
 

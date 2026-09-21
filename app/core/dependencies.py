@@ -83,9 +83,10 @@ def _require_role(*roles: UserRole):
 require_customer = _require_role(UserRole.CUSTOMER)
 require_tailor = _require_role(UserRole.TAILOR)
 require_hub_staff = _require_role(UserRole.HUB_STAFF, UserRole.HUB_MANAGER)
-require_hub_manager = _require_role(UserRole.HUB_MANAGER)
 require_rider = _require_role(UserRole.RIDER)
-require_admin_finance = _require_role(UserRole.ADMIN_FINANCE)
+require_admin_finance = _require_role(UserRole.ADMIN_FINANCE, UserRole.SUPER_ADMIN)
+require_super_admin = _require_role(UserRole.SUPER_ADMIN)
+require_hub_manager = _require_role(UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN)
 
 # Staff or manager
 require_hub_ops = _require_role(UserRole.HUB_STAFF, UserRole.HUB_MANAGER)

@@ -15,6 +15,7 @@ class UserRole(str, Enum):
     HUB_MANAGER = "HUB_MANAGER"
     RIDER = "RIDER"
     ADMIN_FINANCE = "ADMIN_FINANCE"
+    SUPER_ADMIN = "SUPER_ADMIN"
 
 
 # ── Garment Categories ───────────────────────────────────────────────────────
@@ -74,6 +75,32 @@ class GarmentEventType(str, Enum):
     OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"
     DELIVERED = "DELIVERED"
     DELIVERY_FAILED = "DELIVERY_FAILED"
+
+
+# ── Measurements ─────────────────────────────────────────────────────────────
+class MeasurementStatus(str, Enum):
+    NOT_PROVIDED = "NOT_PROVIDED"
+    PROVIDED_BY_CUSTOMER = "PROVIDED_BY_CUSTOMER"
+    CLARIFICATION_REQUIRED = "CLARIFICATION_REQUIRED"
+    CONFIRMED = "CONFIRMED"
+
+
+class MeasurementSource(str, Enum):
+    CUSTOMER = "CUSTOMER"
+    PROFILE = "PROFILE"
+    PREVIOUS_ORDER = "PREVIOUS_ORDER"
+    HUB_STAFF = "HUB_STAFF"
+    TAILOR = "TAILOR"
+
+
+class MeasurementEventType(str, Enum):
+    CREATED = "CREATED"
+    PROVIDED = "PROVIDED"
+    COPIED_FROM_PROFILE = "COPIED_FROM_PROFILE"
+    UPDATED = "UPDATED"
+    CLARIFICATION_REQUESTED = "CLARIFICATION_REQUESTED"
+    CLARIFICATION_RESOLVED = "CLARIFICATION_RESOLVED"
+    CONFIRMED = "CONFIRMED"
 
 
 # Valid garment stage transitions

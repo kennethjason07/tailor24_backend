@@ -67,6 +67,7 @@ def seed(db) -> None:
         return doc
 
     # ── Users ─────────────────────────────────────────────────────────────────
+    super_admin = upsert_user("Super Admin", "+910000000000", "SUPER_ADMIN", "superadmin@tailor24.dev")
     admin = upsert_user("Admin Finance", "+910000000001", "ADMIN_FINANCE", "admin@tailor24.dev")
     manager = upsert_user("Hub Manager Priya", "+910000000002", "HUB_MANAGER", "manager@tailor24.dev")
     staff = upsert_user("Hub Staff Ramu", "+910000000003", "HUB_STAFF", "staff@tailor24.dev")

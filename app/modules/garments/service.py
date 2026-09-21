@@ -23,6 +23,7 @@ from app.common.exceptions import (
     InvalidTransitionError,
     NotFoundError,
     ValidationError,
+    ConflictError
 )
 from app.common.utils import doc_to_dict, to_object_id
 from app.modules.garments.transition_engine import validate_transition
@@ -169,6 +170,13 @@ class GarmentsService:
                 )
         else:
             validate_transition(current_stage, target_stage, actor_role)
+
+        # -- 6b. Validate measurements before CUTTING_STARTED --
+        if target_stage == GarmentStage.CUTTING_STARTED:
+            from app.common.enums import MeasurementStatus
+            meas_status = garment.get("measurements", {}).get("status")
+            if meas_status != MeasurementStatus.CONFIRMED.value:
+                raise ConflictError("Measurements must be confirmed before cutting.")
 
         # -- 7. Build event document --
         now = datetime.now(timezone.utc)

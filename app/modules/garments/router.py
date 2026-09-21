@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, Query, Response
 
 from app.common.responses import ok
 from app.core.database import get_db
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, require_hub_ops
 from app.modules.garments.qr_service import generate_qr_image_bytes
 from app.modules.garments.service import GarmentsService
 from app.modules.orders.schemas import GarmentScanRequest
@@ -76,10 +76,11 @@ def get_by_qr(
     return ok(data=doc_to_dict(g))
 
 
+
 @router.get("/{garment_id}/qr-image", summary="Generate QR image PNG")
 def get_qr_image(
     garment_id: str,
-    _: dict = Depends(get_current_user),
+    _: dict = Depends(require_hub_ops),
     svc: GarmentsService = Depends(get_svc),
 ):
     """
