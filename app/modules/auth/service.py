@@ -17,7 +17,11 @@ from app.core.security import (
     decode_token,
     hash_password,
     verify_password,
+    generate_otp,
+    hash_otp,
+    verify_otp,
 )
+from app.core.mail import send_otp_email
 from jose import JWTError
 
 logger = logging.getLogger(__name__)
@@ -30,6 +34,7 @@ class AuthService:
     def __init__(self, db: Database) -> None:
         self.db = db
         self.users = db.users
+        self.auth_otps = db.auth_otps
 
     def register(
         self,
@@ -100,6 +105,10 @@ class AuthService:
         if not user:
             raise AuthenticationError("User not found or inactive.")
 
+        return self._generate_tokens(user)
+
+    def _generate_tokens(self, user: dict) -> dict:
+        user_id = str(user["_id"])
         role = user["role"]
         access_token = create_access_token(subject=user_id, role=role)
         new_refresh = create_refresh_token(subject=user_id, role=role)
@@ -109,3 +118,62 @@ class AuthService:
             "token_type": "bearer",
             "expires_in": settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         }
+
+    async def send_otp(self, email: str) -> None:
+        otp = generate_otp(6)
+        otp_hash = hash_otp(otp)
+        
+        now = datetime.now(timezone.utc)
+        self.auth_otps.update_one(
+            {"email": email},
+            {"$set": {"hash": otp_hash, "createdAt": now}},
+            upsert=True
+        )
+        
+        await send_otp_email(email, otp)
+
+    def verify_otp_login(self, email: str, otp: str) -> dict:
+        otp_doc = self.auth_otps.find_one({"email": email})
+        if not otp_doc or not verify_otp(otp, otp_doc["hash"]):
+            raise AuthenticationError("Invalid or expired OTP")
+            
+        user = self.users.find_one({"email": email})
+        if not user or not user.get("isActive"):
+            raise AuthenticationError("User not found or inactive")
+            
+        self.auth_otps.delete_one({"_id": otp_doc["_id"]})
+        return self._generate_tokens(user)
+
+    def verify_otp_register(
+        self, email: str, otp: str, name: str, phone: str, role: str
+    ) -> dict:
+        otp_doc = self.auth_otps.find_one({"email": email})
+        if not otp_doc or not verify_otp(otp, otp_doc["hash"]):
+            raise AuthenticationError("Invalid or expired OTP")
+
+        if role not in SELF_REGISTER_ROLES:
+            raise ValidationError(f"Role {role!r} is not allowed to self-register.")
+
+        if self.users.find_one({"phone": phone}):
+            raise ConflictError(f"Phone number {phone!r} is already registered.")
+
+        if self.users.find_one({"email": email}):
+            raise ConflictError(f"Email {email!r} is already registered.")
+
+        now = datetime.now(timezone.utc)
+        doc = {
+            "name": name,
+            "phone": phone,
+            "email": email,
+            "role": role,
+            "passwordHash": hash_password(generate_otp(12)),
+            "isActive": True,
+            "createdAt": now,
+            "updatedAt": now,
+        }
+        result = self.users.insert_one(doc)
+        doc["_id"] = result.inserted_id
+        
+        self.auth_otps.delete_one({"_id": otp_doc["_id"]})
+        logger.info("OTP Registration successful user_id=%s role=%s", doc["_id"], role)
+        return self._generate_tokens(doc)

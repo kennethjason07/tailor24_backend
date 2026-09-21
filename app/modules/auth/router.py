@@ -6,7 +6,10 @@ from fastapi import APIRouter, Depends
 from app.common.responses import ok
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
-from app.modules.auth.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse
+from app.modules.auth.schemas import (
+    LoginRequest, RefreshRequest, RegisterRequest, TokenResponse,
+    SendOtpRequest, VerifyOtpLoginRequest, VerifyOtpRegisterRequest
+)
 from app.modules.auth.service import AuthService
 from app.common.utils import doc_to_dict
 
@@ -42,6 +45,30 @@ def login(body: LoginRequest, svc: AuthService = Depends(get_auth_service)):
 def refresh(body: RefreshRequest, svc: AuthService = Depends(get_auth_service)):
     tokens = svc.refresh(body.refresh_token)
     return ok(data=tokens, message="Token refreshed")
+
+
+@router.post("/send-otp", summary="Send an OTP to an email address")
+async def send_otp(body: SendOtpRequest, svc: AuthService = Depends(get_auth_service)):
+    await svc.send_otp(body.email)
+    return ok(message=f"OTP sent to {body.email}")
+
+
+@router.post("/verify-otp-login", summary="Login using an email OTP")
+def verify_otp_login(body: VerifyOtpLoginRequest, svc: AuthService = Depends(get_auth_service)):
+    tokens = svc.verify_otp_login(body.email, body.otp)
+    return ok(data=tokens, message="OTP login successful")
+
+
+@router.post("/verify-otp-register", summary="Register a new user using an email OTP")
+def verify_otp_register(body: VerifyOtpRegisterRequest, svc: AuthService = Depends(get_auth_service)):
+    tokens = svc.verify_otp_register(
+        email=body.email,
+        otp=body.otp,
+        name=body.name,
+        phone=body.phone,
+        role=body.role
+    )
+    return ok(data=tokens, message="OTP registration successful")
 
 
 @router.get("/me", summary="Get current authenticated user")

@@ -178,6 +178,9 @@ def init_collections(db) -> None:
     # ── counters (internal sequence generator) ────────────────────────────────
     _ensure_collection(db, "counters")
 
+    # ── auth_otps ─────────────────────────────────────────────────────────────
+    _ensure_collection(db, "auth_otps")
+
 
 def init_indexes(db) -> None:
     logger.info("Creating indexes …")
@@ -251,6 +254,10 @@ def init_indexes(db) -> None:
     # notifications
     _idx(db, "notifications", [("recipientUserId", ASCENDING), ("createdAt", DESCENDING)], name="notifications_user_date")
     _idx(db, "notifications", [("status", ASCENDING)], name="notifications_status")
+
+    # auth_otps
+    _idx(db, "auth_otps", [("createdAt", ASCENDING)], expireAfterSeconds=300, name="auth_otps_ttl")
+    _idx(db, "auth_otps", [("email", ASCENDING)], name="auth_otps_email")
 
     logger.info("All indexes created.")
 

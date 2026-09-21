@@ -26,3 +26,17 @@ class TokenResponse(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+class SendOtpRequest(BaseModel):
+    email: EmailStr
+
+class VerifyOtpLoginRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+
+class VerifyOtpRegisterRequest(BaseModel):
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+    name: str = Field(..., min_length=2, max_length=100)
+    phone: str = Field(..., pattern=r"^\+?[0-9]{10,15}$")
+    role: str = Field(default="CUSTOMER")
