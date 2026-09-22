@@ -29,9 +29,17 @@ def list_garments(
     tailor_id: str = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _: dict = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     svc: GarmentsService = Depends(get_svc),
 ):
+    role = current_user.get("role")
+    if role == "HUB_MANAGER":
+        db = get_db()
+        from bson import ObjectId
+        hub = db.hubs.find_one({"managerUserId": ObjectId(str(current_user["_id"]))})
+        if hub:
+            hub_id = str(hub["_id"])
+
     skip = (page - 1) * page_size
     garments = svc.list_garments(
         hub_id=hub_id,
@@ -120,9 +128,10 @@ def scan_garment(
     8. Creates payout on delivery (idempotent)
     9. Returns the new derived state
     """
+    target_stage = body.action or body.targetStage or body.target_stage or ""
     result = svc.process_scan(
         garment_id=garment_id,
-        target_stage_str=body.action,
+        target_stage_str=target_stage,
         actor_user=current_user,
         hub_id_override=body.hubId,
         metadata=body.metadata,

@@ -30,6 +30,8 @@ def dashboard_overview(
         hub = db.hubs.find_one({"managerUserId": ObjectId(str(current_user["_id"]))})
         if hub:
             hub_id = str(hub["_id"])
+        elif current_user.get("hubId"):
+            hub_id = str(current_user["hubId"])
 
     # Admins can see all or filter by hub_id
     data = svc.get_overview(hub_id=hub_id)

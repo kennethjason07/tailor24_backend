@@ -75,4 +75,24 @@ def verify_otp_register(body: VerifyOtpRegisterRequest, svc: AuthService = Depen
 def me(current_user: dict = Depends(get_current_user)):
     user = doc_to_dict(current_user)
     user.pop("passwordHash", None)
+    if not user.get("hubId") and current_user.get("role") in ("HUB_MANAGER", "HUB_STAFF"):
+        from bson import ObjectId
+        db = get_db()
+        hub = db.hubs.find_one({"managerUserId": ObjectId(str(current_user["_id"]))})
+        if hub:
+            user["hubId"] = str(hub["_id"])
     return ok(data=user)
+
+
+@router.post("/activate", summary="Activate user account and set password using activation token")
+def activate_account(body: dict):
+    from app.modules.manager_credentials.service import ManagerCredentialsService
+    token = body.get("activationToken") or body.get("token")
+    password = body.get("password")
+    if not token or not password:
+        from app.common.exceptions import BadRequestError
+        raise BadRequestError("Both activationToken and password are required.")
+    svc = ManagerCredentialsService(get_db())
+    res = svc.activate_account(activation_token=token, password=password)
+    return ok(data=res, message="Account activated successfully")
+

@@ -187,11 +187,12 @@ class OrdersService:
                     "updatedAt": now
                 },
                 "tailorId": None,
-                "intake": None,
-                "sla": None,
-                # currentStage is a PROJECTION CACHE derived from garment_events.
-                # It is set by the event system and must never be updated independently.
-                "currentStage": None,
+                "intake": {"intakedAt": now, "intakedBy": str(customer_id)},
+                "sla": {
+                    "startedAt": now,
+                    "dueAt": now + timedelta(hours=24),
+                },
+                "currentStage": GarmentStage.CUTTING_STARTED.value,
                 "notes": item.get("notes"),
                 "createdAt": now,
                 "updatedAt": now,
@@ -201,6 +202,44 @@ class OrdersService:
         if garment_docs:
             self.db.garments.insert_many(garment_docs)
             
+            # Create workflow events (INTAKE + CUTTING_STARTED)
+            workflow_events = []
+            for g in garment_docs:
+                workflow_events.append({
+                    "garmentId": g["_id"],
+                    "orderId": order_id,
+                    "hubId": g["hubId"],
+                    "eventType": GarmentStage.INTAKE.value,
+                    "stage": GarmentStage.INTAKE.value,
+                    "previousStage": None,
+                    "actor": {
+                        "userId": ObjectId(customer_id),
+                        "name": "Customer / System",
+                        "role": "CUSTOMER",
+                    },
+                    "qrCode": g["qrCode"],
+                    "occurredAt": now,
+                    "createdAt": now,
+                })
+                workflow_events.append({
+                    "garmentId": g["_id"],
+                    "orderId": order_id,
+                    "hubId": g["hubId"],
+                    "eventType": GarmentStage.CUTTING_STARTED.value,
+                    "stage": GarmentStage.CUTTING_STARTED.value,
+                    "previousStage": GarmentStage.INTAKE.value,
+                    "actor": {
+                        "userId": ObjectId(customer_id),
+                        "name": "Hub Production",
+                        "role": "HUB_STAFF",
+                    },
+                    "qrCode": g["qrCode"],
+                    "occurredAt": now,
+                    "createdAt": now,
+                })
+            if workflow_events:
+                self.db.garment_events.insert_many(workflow_events)
+
             # Create measurement events
             meas_events = []
             for g in garment_docs:
@@ -279,7 +318,17 @@ class OrdersService:
         if hub_id:
             query["hubId"] = ObjectId(hub_id)
         orders = list(self.db.orders.find(query).sort("createdAt", -1).skip(skip).limit(limit))
-        return [doc_to_dict(o) for o in orders]
+        res = []
+        for o in orders:
+            od = doc_to_dict(o)
+            garments = list(self.db.garments.find({"orderId": o["_id"]}))
+            od["garments"] = [doc_to_dict(g) for g in garments]
+            customer = self.db.users.find_one({"_id": o["customerId"]})
+            if customer:
+                od["customerName"] = customer.get("name", "Customer")
+                od["customerPhone"] = customer.get("phone", "")
+            res.append(od)
+        return res
 
     def get_order_tracking(self, order_id: str) -> dict:
         """Return full tracking info: order + all garments + latest stage per garment."""

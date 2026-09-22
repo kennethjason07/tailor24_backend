@@ -1,0 +1,1 @@
+"""Manager Credentials Module."""

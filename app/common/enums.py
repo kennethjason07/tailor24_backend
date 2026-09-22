@@ -107,18 +107,18 @@ class MeasurementEventType(str, Enum):
 # Maps current stage → set of allowed next stages
 VALID_TRANSITIONS: dict[GarmentStage, set[GarmentStage]] = {
     GarmentStage.INTAKE: {GarmentStage.CUTTING_STARTED},
-    GarmentStage.CUTTING_STARTED: {GarmentStage.CUTTING_COMPLETED},
-    GarmentStage.CUTTING_COMPLETED: {GarmentStage.STITCHING_ASSIGNED},
+    GarmentStage.CUTTING_STARTED: {GarmentStage.CUTTING_COMPLETED, GarmentStage.STITCHING_ASSIGNED, GarmentStage.STITCHING_STARTED},
+    GarmentStage.CUTTING_COMPLETED: {GarmentStage.STITCHING_ASSIGNED, GarmentStage.STITCHING_STARTED},
     GarmentStage.STITCHING_ASSIGNED: {GarmentStage.STITCHING_STARTED},
-    GarmentStage.STITCHING_STARTED: {GarmentStage.STITCHING_COMPLETED},
+    GarmentStage.STITCHING_STARTED: {GarmentStage.STITCHING_COMPLETED, GarmentStage.QC_STARTED},
     GarmentStage.STITCHING_COMPLETED: {GarmentStage.QC_STARTED},
     GarmentStage.QC_STARTED: {GarmentStage.QC_PASSED, GarmentStage.QC_REWORK},
-    GarmentStage.QC_PASSED: {GarmentStage.IRONING_STARTED},
+    GarmentStage.QC_PASSED: {GarmentStage.IRONING_STARTED, GarmentStage.IRONING_COMPLETED, GarmentStage.PACKED},
     GarmentStage.QC_REWORK: {GarmentStage.STITCHING_STARTED},  # rework loop
-    GarmentStage.IRONING_STARTED: {GarmentStage.IRONING_COMPLETED},
+    GarmentStage.IRONING_STARTED: {GarmentStage.IRONING_COMPLETED, GarmentStage.PACKED},
     GarmentStage.IRONING_COMPLETED: {GarmentStage.PACKED},
     GarmentStage.PACKED: {GarmentStage.DISPATCHED},
-    GarmentStage.DISPATCHED: {GarmentStage.OUT_FOR_DELIVERY},
+    GarmentStage.DISPATCHED: {GarmentStage.OUT_FOR_DELIVERY, GarmentStage.DELIVERED},
     GarmentStage.OUT_FOR_DELIVERY: {GarmentStage.DELIVERED, GarmentStage.DELIVERY_FAILED},
     GarmentStage.DELIVERED: set(),        # terminal
     GarmentStage.DELIVERY_FAILED: {GarmentStage.OUT_FOR_DELIVERY},  # retry
@@ -126,22 +126,22 @@ VALID_TRANSITIONS: dict[GarmentStage, set[GarmentStage]] = {
 
 # Stages that require specific roles to advance
 STAGE_ACTOR_ROLES: dict[GarmentStage, set[UserRole]] = {
-    GarmentStage.INTAKE: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.CUTTING_STARTED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.CUTTING_COMPLETED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.STITCHING_ASSIGNED: {UserRole.HUB_MANAGER},
-    GarmentStage.STITCHING_STARTED: {UserRole.TAILOR, UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.STITCHING_COMPLETED: {UserRole.TAILOR, UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.QC_STARTED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.QC_PASSED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.QC_REWORK: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.IRONING_STARTED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.IRONING_COMPLETED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.PACKED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.DISPATCHED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.OUT_FOR_DELIVERY: {UserRole.RIDER, UserRole.HUB_STAFF, UserRole.HUB_MANAGER},
-    GarmentStage.DELIVERED: {UserRole.RIDER},
-    GarmentStage.DELIVERY_FAILED: {UserRole.RIDER},
+    GarmentStage.INTAKE: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.CUTTING_STARTED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.CUTTING_COMPLETED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.STITCHING_ASSIGNED: {UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.STITCHING_STARTED: {UserRole.TAILOR, UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.STITCHING_COMPLETED: {UserRole.TAILOR, UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.QC_STARTED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.QC_PASSED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.QC_REWORK: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.IRONING_STARTED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.IRONING_COMPLETED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.PACKED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.DISPATCHED: {UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.OUT_FOR_DELIVERY: {UserRole.RIDER, UserRole.HUB_STAFF, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.DELIVERED: {UserRole.RIDER, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
+    GarmentStage.DELIVERY_FAILED: {UserRole.RIDER, UserRole.HUB_MANAGER, UserRole.SUPER_ADMIN},
 }
 
 

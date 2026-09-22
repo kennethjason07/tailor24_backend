@@ -33,6 +33,12 @@ class ValidationError(AppError):
     error_code = "VALIDATION_ERROR"
 
 
+class BadRequestError(AppError):
+    status_code = 400
+    error_code = "BAD_REQUEST"
+
+
+
 class BusinessRuleError(AppError):
     status_code = 400
     error_code = "BUSINESS_RULE_VIOLATION"

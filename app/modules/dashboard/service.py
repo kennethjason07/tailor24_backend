@@ -139,14 +139,42 @@ class DashboardService:
             for r in self.db.garments.aggregate(stage_pipeline)
         }
 
+        # ── Additional operational counts ──────────────────────────────────
+        awaiting_assignment = self.db.garments.count_documents(
+            {**hub_filter, "currentStage": {"$in": ["CUTTING_COMPLETED", "STITCHING_ASSIGNED", "INTAKE", "CUTTING_STARTED"]}, "tailorId": None}
+        )
+        qc_rework = self.db.garments.count_documents({**hub_filter, "currentStage": "QC_REWORK"})
+        ready_dispatch = self.db.garments.count_documents({**hub_filter, "currentStage": "PACKED"})
+        pending_leave = self.db.leave_requests.count_documents({"status": "PENDING"})
+
+        stage_count = {
+            "intake": stage_breakdown.get("INTAKE", 0),
+            "cutting": stage_breakdown.get("CUTTING_STARTED", 0) + stage_breakdown.get("CUTTING_COMPLETED", 0),
+            "stitching": stage_breakdown.get("STITCHING_ASSIGNED", 0) + stage_breakdown.get("STITCHING_STARTED", 0) + stage_breakdown.get("STITCHING_COMPLETED", 0),
+            "qc": stage_breakdown.get("QC_STARTED", 0) + stage_breakdown.get("QC_PASSED", 0) + stage_breakdown.get("QC_REWORK", 0),
+            "ironing": stage_breakdown.get("IRONING_STARTED", 0) + stage_breakdown.get("IRONING_COMPLETED", 0),
+            "packed": stage_breakdown.get("PACKED", 0),
+            "dispatched": stage_breakdown.get("DISPATCHED", 0) + stage_breakdown.get("OUT_FOR_DELIVERY", 0),
+        }
+
         return {
             "garments_in_production": in_production,
+            "inProduction": in_production,
             "garments_delivered_today": delivered_today,
+            "deliveredToday": delivered_today,
             "sla": sla_summary,
+            "atRisk": sla_summary.get("AT_RISK", 0),
+            "overdue": sla_summary.get("OVERDUE", 0),
+            "awaitingAssignment": awaiting_assignment,
+            "qcRework": qc_rework,
+            "readyDispatch": ready_dispatch,
+            "pendingLeave": pending_leave,
             "pending_tailor_claims": pending_claims,
+            "pendingPayouts": pending_claims,
             "cod_to_collect_today": cod_today,
             "tailor_availability": tailor_availability,
             "stage_breakdown": stage_breakdown,
+            "stageCount": stage_count,
             "hub_id": hub_id,
             "generated_at": now.isoformat(),
         }

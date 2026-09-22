@@ -60,9 +60,19 @@ def list_orders(
     hub_id: str = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    _: dict = Depends(require_hub_ops),
+    current_user: dict = Depends(require_hub_ops),
     svc: OrdersService = Depends(get_svc),
 ):
+    role = current_user.get("role")
+    if role in ("HUB_MANAGER", "HUB_STAFF") and not hub_id:
+        db = get_db()
+        from bson import ObjectId
+        hub = db.hubs.find_one({"managerUserId": ObjectId(str(current_user["_id"]))})
+        if hub:
+            hub_id = str(hub["_id"])
+        elif current_user.get("hubId"):
+            hub_id = str(current_user["hubId"])
+
     skip = (page - 1) * page_size
     orders = svc.list_orders(hub_id=hub_id, skip=skip, limit=page_size)
     return ok(data=orders)

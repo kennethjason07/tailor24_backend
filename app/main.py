@@ -114,6 +114,8 @@ from app.modules.payouts.router import router as payouts_router
 from app.modules.notifications.router import router as notifications_router
 from app.modules.dashboard.router import router as dashboard_router
 from app.modules.measurements.router import router as measurements_router
+from app.modules.manager_credentials.router import router as manager_credentials_router
+from app.modules.tailor_app.router import router as tailor_app_router
 
 PREFIX = "/api/v1"
 
@@ -133,3 +135,6 @@ app.include_router(payouts_router, prefix=f"{PREFIX}/payouts", tags=["Payouts"])
 app.include_router(notifications_router, prefix=f"{PREFIX}/notifications", tags=["Notifications"])
 app.include_router(dashboard_router, prefix=f"{PREFIX}/dashboard", tags=["Dashboard"])
 app.include_router(measurements_router, prefix=f"{PREFIX}", tags=["Measurements"])
+app.include_router(manager_credentials_router, prefix=f"{PREFIX}/manager", tags=["Manager Credentials"])
+app.include_router(tailor_app_router, prefix=f"{PREFIX}/tailor", tags=["Tailor App"])
+

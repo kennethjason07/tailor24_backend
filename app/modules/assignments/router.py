@@ -19,6 +19,12 @@ class AssignRequest(BaseModel):
     overrideCapacity: bool = False
 
 
+class AssignWorkerRequest(BaseModel):
+    workerId: str  # userId of the HUB_STAFF worker
+    workerName: str = "Hub Worker"
+    stage: str = "CUTTING_STARTED"  # which stage this worker is responsible for
+
+
 def get_svc():
     return AssignmentsService(get_db())
 
@@ -76,3 +82,20 @@ def list_assignments(
         limit=page_size,
     )
     return ok(data=assignments)
+
+
+@router.post("/garments/{garment_id}/assign-worker", summary="Assign a hub worker to a garment")
+def assign_worker(
+    garment_id: str,
+    body: AssignWorkerRequest,
+    current_user: dict = Depends(require_hub_manager),
+    svc: AssignmentsService = Depends(get_svc),
+):
+    """Directly assign a HUB_STAFF worker (not a tailor) to a garment."""
+    result = svc.assign_worker_to_garment(
+        garment_id=garment_id,
+        worker_user_id=body.workerId,
+        worker_name=body.workerName,
+        assigned_by_user=current_user,
+    )
+    return ok(data=result, message="Worker assigned successfully")

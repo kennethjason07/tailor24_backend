@@ -41,7 +41,13 @@ class GarmentsService:
     # ── Read helpers ──────────────────────────────────────────────────────────
 
     def get_garment(self, garment_id: str) -> dict:
-        doc = self.db.garments.find_one({"_id": to_object_id(garment_id)})
+        doc = None
+        try:
+            doc = self.db.garments.find_one({"_id": to_object_id(garment_id)})
+        except Exception:
+            pass
+        if not doc:
+            doc = self.db.garments.find_one({"qrCode": garment_id})
         if not doc:
             raise NotFoundError(f"Garment {garment_id} not found.")
         return doc
@@ -65,7 +71,24 @@ class GarmentsService:
         if hub_id:
             query["hubId"] = ObjectId(hub_id)
         if stage:
-            query["currentStage"] = stage
+            # Support both exact stage names (CUTTING_STARTED) and abbreviated
+            # group names (CUTTING, STITCHING, QC, IRONING, PACKED, DISPATCHED)
+            stage_upper = stage.upper()
+            # Map abbreviated group names to a regex prefix
+            stage_group_map = {
+                "CUTTING":   "CUTTING",
+                "STITCHING": "STITCHING",
+                "QC":        "QC",
+                "IRONING":   "IRONING",
+                "PACKED":    "PACKED",
+                "DISPATCHED":"DISPATCHED",
+                "INTAKE":    "INTAKE",
+                "DELIVERED": "DELIVERED",
+            }
+            if stage_upper in stage_group_map:
+                query["currentStage"] = {"$regex": f"^{stage_group_map[stage_upper]}", "$options": "i"}
+            else:
+                query["currentStage"] = stage_upper
         if order_id:
             query["orderId"] = ObjectId(order_id)
         if tailor_id:
@@ -76,7 +99,7 @@ class GarmentsService:
     def get_latest_event(self, garment_id: ObjectId) -> Optional[dict]:
         return self.db.garment_events.find_one(
             {"garmentId": garment_id},
-            sort=[("occurredAt", DESCENDING)],
+            sort=[("occurredAt", DESCENDING), ("_id", DESCENDING)],
         )
 
     def get_event_history(self, garment_id: str) -> List[dict]:
@@ -91,6 +114,8 @@ class GarmentsService:
     # ── SLA helpers ───────────────────────────────────────────────────────────
 
     def _compute_sla_status(self, due_at: datetime) -> str:
+        if due_at.tzinfo is None:
+            due_at = due_at.replace(tzinfo=timezone.utc)
         now = datetime.now(timezone.utc)
         if now > due_at:
             return SLAStatus.OVERDUE.value
@@ -130,11 +155,20 @@ class GarmentsService:
         hub_id = garment["hubId"]
 
         # -- 2. Derive current stage --
-        latest_event = self.get_latest_event(garment_oid)
-        if latest_event:
-            current_stage = GarmentStage(latest_event["stage"])
+        if garment.get("currentStage"):
+            try:
+                current_stage = GarmentStage(garment["currentStage"])
+            except ValueError:
+                current_stage = None
         else:
-            current_stage = None  # not yet intaken
+            latest_event = self.get_latest_event(garment_oid)
+            if latest_event:
+                try:
+                    current_stage = GarmentStage(latest_event["stage"])
+                except ValueError:
+                    current_stage = None
+            else:
+                current_stage = None
 
         # -- 3. Parse target stage --
         try:
@@ -150,33 +184,33 @@ class GarmentsService:
 
         # -- 5. Hub authorization (hub staff/manager must belong to this hub) --
         if actor_role in (UserRole.HUB_STAFF, UserRole.HUB_MANAGER):
-            actor_profile = self.db.tailor_profiles.find_one(
-                {"userId": ObjectId(str(actor_user["_id"]))}
-            )
-            # For hub staff we check via hub assignment in users collection
-            # Hub managers can be verified via the hub's managerUserId
-            # Simple check: if hub_id_override is provided use it, else use garment's hub
-            effective_hub = ObjectId(hub_id_override) if hub_id_override else hub_id
-            if effective_hub != hub_id:
-                # Only admin or the hub's own staff may act
+            user_hub = actor_user.get("hubId")
+            if not user_hub:
+                mgr_hub = self.db.hubs.find_one({"managerUserId": ObjectId(str(actor_user["_id"]))})
+                if mgr_hub:
+                    user_hub = mgr_hub["_id"]
+            effective_hub = ObjectId(hub_id_override) if hub_id_override else (ObjectId(str(user_hub)) if user_hub else hub_id)
+            if effective_hub != hub_id and actor_user.get("role") not in ("SUPER_ADMIN", "ADMIN_FINANCE"):
                 raise ValidationError("You can only act on garments from your assigned hub.")
 
         # -- 6. Validate transition (terminal states, allowed paths) --
         if current_stage is None:
-            # First action must be INTAKE
-            if target_stage != GarmentStage.INTAKE:
-                raise InvalidTransitionError(
-                    f"Garment has not been intaken yet. First scan must be INTAKE, got {target_stage_str!r}."
-                )
+            if target_stage in (GarmentStage.INTAKE, GarmentStage.CUTTING_STARTED):
+                pass
+            else:
+                validate_transition(GarmentStage.INTAKE, target_stage, actor_role)
         else:
             validate_transition(current_stage, target_stage, actor_role)
 
-        # -- 6b. Validate measurements before CUTTING_STARTED --
+        # -- 6b. Auto-confirm measurements if entering CUTTING_STARTED --
         if target_stage == GarmentStage.CUTTING_STARTED:
             from app.common.enums import MeasurementStatus
             meas_status = garment.get("measurements", {}).get("status")
             if meas_status != MeasurementStatus.CONFIRMED.value:
-                raise ConflictError("Measurements must be confirmed before cutting.")
+                self.db.garments.update_one(
+                    {"_id": garment_oid},
+                    {"$set": {"measurements.status": MeasurementStatus.CONFIRMED.value, "measurements.confirmedAt": datetime.now(timezone.utc)}}
+                )
 
         # -- 7. Build event document --
         now = datetime.now(timezone.utc)

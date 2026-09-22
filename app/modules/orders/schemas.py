@@ -59,6 +59,9 @@ class OrderCreateRequest(BaseModel):
 
 
 class GarmentScanRequest(BaseModel):
-    action: str = Field(..., description="Target stage e.g. CUTTING_STARTED")
+    action: Optional[str] = Field(None, description="Target stage e.g. CUTTING_STARTED")
+    targetStage: Optional[str] = Field(None, description="Alternative alias for action")
+    target_stage: Optional[str] = Field(None, description="Snake case alias for action")
     hubId: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
+
